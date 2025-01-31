@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organização Financeira</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .container { max-width: 600px; margin-top: 20px; }
+        .card { text-align: center; }
+        .entrada { color: green; }
+        .saida { color: red; }
+        .footer { text-align: center; padding: 10px; margin-top: 20px; background: #f8f9fa; }
+        .logo { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo text-center">💰 FinançasPro</div>
+        <div class="d-flex justify-content-between mb-4">
+            <div class="card p-3 entrada">
+                <h5>Entradas</h5>
+                <span id="entradaTotal">R$ 0,00</span>
+            </div>
+            <div class="card p-3 saida">
+                <h5>Saídas</h5>
+                <span id="saidaTotal">R$ 0,00</span>
+            </div>
+            <div class="card p-3">
+                <h5>Total</h5>
+                <span id="totalSaldo">R$ 0,00</span>
+            </div>
+        </div>
+        <button class="btn btn-primary w-100 mb-4" data-bs-toggle="modal" data-bs-target="#modalTransacao">Nova Transação</button>
+        
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Descrição</th>
+                    <th>Valor</th>
+                    <th>Data</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="transacoes"></tbody>
+        </table>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="modalTransacao" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nova Transação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label>Descrição</label>
+                    <input type="text" id="descricao" class="form-control mb-2">
+                    <label>Valor</label>
+                    <input type="text" id="valor" class="form-control mb-2">
+                    <small class="text-muted">Use o sinal - (negativo) para despesas e , (vírgula) para casas decimais</small>
+                    <label class="mt-2">Data</label>
+                    <input type="date" id="data" class="form-control">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="salvarTransacao">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let transacoes = [];
+        let editIndex = -1;
+
+        function atualizarResumo() {
+            let entrada = transacoes.filter(t => t.valor > 0).reduce((acc, t) => acc + t.valor, 0);
+            let saida = Math.abs(transacoes.filter(t => t.valor < 0).reduce((acc, t) => acc + t.valor, 0));
+            let total = entrada - saida;
+            $("#entradaTotal").text(`R$ ${entrada.toFixed(2).replace('.', ',')}`);
+            $("#saidaTotal").text(`R$ ${saida.toFixed(2).replace('.', ',')}`);
+            $("#totalSaldo").text(`R$ ${total.toFixed(2).replace('.', ',')}`);
+        }
+
+        function atualizarTabela() {
+            let tbody = $("#transacoes");
+            tbody.html("");
+            transacoes.forEach((t, index) => {
+                let cor = t.valor < 0 ? 'text-danger' : 'text-success';
+                tbody.append(`
+                    <tr>
+                        <td>${t.descricao}</td>
+                        <td class="${cor}">R$ ${Math.abs(t.valor).toFixed(2).replace('.', ',')}</td>
+                        <td>${t.data}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning editar-transacao" data-index="${index}">Editar</button>
+                            <button class="btn btn-sm btn-danger excluir-transacao" data-index="${index}">Excluir</button>
+                        </td>
+                    </tr>
+                `);
+            });
+        }
+
+        $("#salvarTransacao").click(function () {
+            let descricao = $("#descricao").val();
+            let valor = parseFloat($("#valor").val().replace(",", "."));
+            let data = $("#data").val();
+            
+            if (descricao && !isNaN(valor) && data) {
+                if (editIndex !== -1) {
+                    transacoes[editIndex] = { descricao, valor, data };
+                    editIndex = -1;
+                } else {
+                    transacoes.push({ descricao, valor, data });
+                }
+                atualizarResumo();
+                atualizarTabela();
+                $("#modalTransacao").modal('hide');
+                $("#descricao, #valor, #data").val("");
+                $(".modal-title").text("Nova Transação");
+            } else {
+                alert("Preencha todos os campos corretamente!");
+            }
+        });
+
+        $(document).on("click", ".editar-transacao", function() {
+            editIndex = $(this).data("index");
+            let transacao = transacoes[editIndex];
+            $("#descricao").val(transacao.descricao);
+            $("#valor").val(transacao.valor.toFixed(2).replace(".", ","));
+            $("#data").val(transacao.data);
+            $(".modal-title").text("Editar Transação");
+            $("#modalTransacao").modal('show');
+        });
+
+        $(document).on("click", ".excluir-transacao", function() {
+            let index = $(this).data("index");
+            if (confirm("Tem certeza que deseja excluir esta transação?")) {
+                transacoes.splice(index, 1);
+                atualizarResumo();
+                atualizarTabela();
+            }
+        });
+
+        $("#modalTransacao").on("hidden.bs.modal", function () {
+            editIndex = -1;
+            $("#descricao, #valor, #data").val("");
+            $(".modal-title").text("Nova Transação");
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <footer class="footer">&copy; 2025 BArcellos ↟ - Todos os direitos reservados.</footer>
+</body>
+</html>
