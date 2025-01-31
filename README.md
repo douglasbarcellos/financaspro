@@ -1,10 +1,13 @@
+# Finanças PRO
 
 O projeto consiste em um único arquivo HTML que contém todo o código necessário (HTML, CSS e JavaScript).
 
 ## Como Usar
 
 1. Clone o repositório ou baixe o arquivo `index.html`.
-2. Abra o arquivo `index.html` em um navegador web moderno.
+2. Abra o arquivo `index.html` em seu editor de código preferido.
+
+Ou, acesse o [link](https://douglasbarcellos.github.io/financaspro/) para testar.
 
 ### Adicionar uma Nova Transação
 
