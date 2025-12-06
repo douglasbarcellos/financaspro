@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinançasPro V2 | Gestão Financeira Completa</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+        body { background: #f8fafc; }
+        .container-fluid { max-width: 1400px; }
+        .logo { font-size: 28px; font-weight: bold; color: var(--primary); }
+        .card { border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 12px; }
+        .stat-card { transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .entrada { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+        .saida { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
+        .saldo { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; }
+        .nav-tabs .nav-link { border: none; color: #64748b; }
+        .nav-tabs .nav-link.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+        .badge-categoria { padding: 5px 12px; border-radius: 20px; font-size: 12px; }
+        .filtros { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .chart-container { background: white; padding: 20px; border-radius: 12px; height: 350px; }
+        .table-hover tbody tr:hover { background: #f1f5f9; }
+        .meta-progress { height: 8px; border-radius: 10px; }
+        .export-btn { background: #10b981; color: white; border: none; }
+        .export-btn:hover { background: #059669; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-light bg-white shadow-sm mb-4">
+        <div class="container-fluid">
+            <span class="logo">💰 FinançasPro V2</span>
+            <div>
+                <button class="btn btn-outline-primary btn-sm me-2" onclick="exportarDados()">📊 Exportar</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="limparDados()">🗑️ Limpar</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <!-- Cards de Resumo -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card entrada p-3">
+                    <h6 class="mb-1">💚 Entradas</h6>
+                    <h3 id="entradaTotal" class="mb-0">R$ 0,00</h3>
+                    <small>Total de receitas</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card saida p-3">
+                    <h6 class="mb-1">💸 Saídas</h6>
+                    <h3 id="saidaTotal" class="mb-0">R$ 0,00</h3>
+                    <small>Total de despesas</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card saldo p-3">
+                    <h6 class="mb-1">💰 Saldo</h6>
+                    <h3 id="totalSaldo" class="mb-0">R$ 0,00</h3>
+                    <small>Balanço geral</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card p-3" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white;">
+                    <h6 class="mb-1">📈 Meta Mensal</h6>
+                    <h3 id="metaAtual" class="mb-0">R$ 0,00</h3>
+                    <div class="progress meta-progress mt-2" style="background: rgba(255,255,255,0.3);">
+                        <div id="metaProgress" class="progress-bar bg-white" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros e Ações -->
+        <div class="filtros">
+            <div class="row align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Período</label>
+                    <select id="filtroPeriodo" class="form-select">
+                        <option value="todos">Todos</option>
+                        <option value="mes" selected>Este mês</option>
+                        <option value="trimestre">Últimos 3 meses</option>
+                        <option value="ano">Este ano</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Categoria</label>
+                    <select id="filtroCategoria" class="form-select">
+                        <option value="todas">Todas</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Tipo</label>
+                    <select id="filtroTipo" class="form-select">
+                        <option value="todos">Todos</option>
+                        <option value="entrada">Entradas</option>
+                        <option value="saida">Saídas</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="aplicarFiltros()">🔍 Filtrar</button>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#modalTransacao">+ Nova Transação</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs de Conteúdo -->
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#tabTransacoes">📋 Transações</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tabGraficos">📊 Gráficos</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tabCategorias">🏷️ Categorias</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tabMetas">🎯 Metas</a>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Transações -->
+            <div class="tab-pane fade show active" id="tabTransacoes">
+                <div class="card p-3">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Descrição</th>
+                                    <th>Categoria</th>
+                                    <th>Valor</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transacoes"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos -->
+            <div class="tab-pane fade" id="tabGraficos">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <canvas id="graficoTipo"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <canvas id="graficoCategorias"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="chart-container">
+                            <canvas id="graficoTendencia"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categorias -->
+            <div class="tab-pane fade" id="tabCategorias">
+                <div class="card p-3">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h5>Nova Categoria</h5>
+                            <input type="text" id="novaCategoria" class="form-control mb-2" placeholder="Nome da categoria">
+                            <input type="color" id="corCategoria" class="form-control mb-2" value="#2563eb">
+                            <button class="btn btn-primary w-100" onclick="adicionarCategoria()">Adicionar</button>
+                        </div>
+                        <div class="col-md-8">
+                            <h5>Categorias Cadastradas</h5>
+                            <div id="listaCategorias" class="d-flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metas -->
+            <div class="tab-pane fade" id="tabMetas">
+                <div class="card p-3">
+                    <h5>Definir Meta Mensal de Economia</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Valor da Meta (R$)</label>
+                            <input type="number" id="valorMeta" class="form-control" placeholder="1000.00" step="0.01">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Mês/Ano</label>
+                            <input type="month" id="mesMeta" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">&nbsp;</label>
+                            <button class="btn btn-success w-100" onclick="salvarMeta()">Salvar Meta</button>
+                        </div>
+                    </div>
+                    <hr>
+                    <div id="listaMetasHistorico"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Transação -->
+    <div class="modal fade" id="modalTransacao" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nova Transação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Tipo</label>
+                    <div class="btn-group w-100 mb-3" role="group">
+                        <input type="radio" class="btn-check" name="tipo" id="tipoEntrada" value="entrada" checked>
+                        <label class="btn btn-outline-success" for="tipoEntrada">💚 Entrada</label>
+                        <input type="radio" class="btn-check" name="tipo" id="tipoSaida" value="saida">
+                        <label class="btn btn-outline-danger" for="tipoSaida">💸 Saída</label>
+                    </div>
+                    
+                    <label class="form-label">Descrição</label>
+                    <input type="text" id="descricao" class="form-control mb-3" placeholder="Ex: Salário, Aluguel...">
+                    
+                    <label class="form-label">Valor (R$)</label>
+                    <input type="number" id="valor" class="form-control mb-3" placeholder="0,00" step="0.01">
+                    
+                    <label class="form-label">Categoria</label>
+                    <select id="categoria" class="form-select mb-3"></select>
+                    
+                    <label class="form-label">Data</label>
+                    <input type="date" id="data" class="form-control">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="salvarTransacao()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let transacoes = JSON.parse(localStorage.getItem('transacoes')) || [];
+        let categorias = JSON.parse(localStorage.getItem('categorias')) || [
+            {nome: 'Salário', cor: '#10b981'},
+            {nome: 'Alimentação', cor: '#ef4444'},
+            {nome: 'Transporte', cor: '#f59e0b'},
+            {nome: 'Lazer', cor: '#8b5cf6'},
+            {nome: 'Saúde', cor: '#ec4899'},
+            {nome: 'Educação', cor: '#3b82f6'}
+        ];
+        let metas = JSON.parse(localStorage.getItem('metas')) || [];
+        let editIndex = -1;
+
+        function salvarLocalStorage() {
+            localStorage.setItem('transacoes', JSON.stringify(transacoes));
+            localStorage.setItem('categorias', JSON.stringify(categorias));
+            localStorage.setItem('metas', JSON.stringify(metas));
+        }
+
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+        }
+
+        function atualizarResumo() {
+            const entrada = transacoes.filter(t => t.tipo === 'entrada').reduce((acc, t) => acc + t.valor, 0);
+            const saida = transacoes.filter(t => t.tipo === 'saida').reduce((acc, t) => acc + t.valor, 0);
+            const total = entrada - saida;
+            
+            $("#entradaTotal").text(formatarMoeda(entrada));
+            $("#saidaTotal").text(formatarMoeda(saida));
+            $("#totalSaldo").text(formatarMoeda(total));
+
+            const mesAtual = new Date().toISOString().slice(0, 7);
+            const metaAtual = metas.find(m => m.mes === mesAtual);
+            if (metaAtual) {
+                $("#metaAtual").text(formatarMoeda(metaAtual.valor));
+                const progresso = Math.min((total / metaAtual.valor) * 100, 100);
+                $("#metaProgress").css('width', progresso + '%');
+            }
+        }
+
+        function atualizarTabela() {
+            const tbody = $("#transacoes");
+            tbody.html("");
+            
+            const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(b.data) - new Date(a.data));
+            
+            transacoesOrdenadas.forEach((t, index) => {
+                const cor = t.tipo === 'entrada' ? 'text-success' : 'text-danger';
+                const categoria = categorias.find(c => c.nome === t.categoria) || {cor: '#64748b'};
+                tbody.append(`
+                    <tr>
+                        <td>${new Date(t.data + 'T00:00').toLocaleDateString('pt-BR')}</td>
+                        <td>${t.descricao}</td>
+                        <td><span class="badge-categoria" style="background: ${categoria.cor}20; color: ${categoria.cor}">${t.categoria}</span></td>
+                        <td class="${cor} fw-bold">${formatarMoeda(t.valor)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editarTransacao(${transacoes.indexOf(t)})">✏️</button>
+                            <button class="btn btn-sm btn-danger" onclick="excluirTransacao(${transacoes.indexOf(t)})">🗑️</button>
+                        </td>
+                    </tr>
+                `);
+            });
+        }
+
+        function atualizarCategorias() {
+            const select = $("#categoria");
+            const filtro = $("#filtroCategoria");
+            select.html("");
+            filtro.html('<option value="todas">Todas</option>');
+            
+            categorias.forEach(c => {
+                select.append(`<option value="${c.nome}">${c.nome}</option>`);
+                filtro.append(`<option value="${c.nome}">${c.nome}</option>`);
+            });
+
+            const lista = $("#listaCategorias");
+            lista.html("");
+            categorias.forEach((c, i) => {
+                lista.append(`
+                    <div class="badge-categoria" style="background: ${c.cor}20; color: ${c.cor}">
+                        ${c.nome}
+                        <button class="btn btn-sm" onclick="excluirCategoria(${i})" style="color: ${c.cor}; padding: 0 5px;">×</button>
+                    </div>
+                `);
+            });
+        }
+
+        function salvarTransacao() {
+            const tipo = $('input[name="tipo"]:checked').val();
+            const descricao = $("#descricao").val();
+            const valor = parseFloat($("#valor").val());
+            const categoria = $("#categoria").val();
+            const data = $("#data").val();
+
+            if (descricao && valor && categoria && data) {
+                const transacao = { tipo, descricao, valor, categoria, data };
+                
+                if (editIndex !== -1) {
+                    transacoes[editIndex] = transacao;
+                    editIndex = -1;
+                } else {
+                    transacoes.push(transacao);
+                }
+                
+                salvarLocalStorage();
+                atualizarResumo();
+                atualizarTabela();
+                $("#modalTransacao").modal('hide');
+                limparFormulario();
+                atualizarGraficos();
+            } else {
+                alert("Preencha todos os campos!");
+            }
+        }
+
+        function editarTransacao(index) {
+            editIndex = index;
+            const t = transacoes[index];
+            $(`input[name="tipo"][value="${t.tipo}"]`).prop('checked', true);
+            $("#descricao").val(t.descricao);
+            $("#valor").val(t.valor);
+            $("#categoria").val(t.categoria);
+            $("#data").val(t.data);
+            $("#modalTransacao").modal('show');
+        }
+
+        function excluirTransacao(index) {
+            if (confirm("Deseja excluir esta transação?")) {
+                transacoes.splice(index, 1);
+                salvarLocalStorage();
+                atualizarResumo();
+                atualizarTabela();
+                atualizarGraficos();
+            }
+        }
+
+        function limparFormulario() {
+            $("#descricao, #valor, #data").val("");
+            $("#tipoEntrada").prop('checked', true);
+        }
+
+        function adicionarCategoria() {
+            const nome = $("#novaCategoria").val();
+            const cor = $("#corCategoria").val();
+            
+            if (nome && !categorias.some(c => c.nome === nome)) {
+                categorias.push({ nome, cor });
+                salvarLocalStorage();
+                atualizarCategorias();
+                $("#novaCategoria").val("");
+            } else {
+                alert("Categoria inválida ou já existe!");
+            }
+        }
+
+        function excluirCategoria(index) {
+            if (confirm("Deseja excluir esta categoria?")) {
+                categorias.splice(index, 1);
+                salvarLocalStorage();
+                atualizarCategorias();
+            }
+        }
+
+        function salvarMeta() {
+            const valor = parseFloat($("#valorMeta").val());
+            const mes = $("#mesMeta").val();
+            
+            if (valor && mes) {
+                const metaExistente = metas.findIndex(m => m.mes === mes);
+                if (metaExistente !== -1) {
+                    metas[metaExistente].valor = valor;
+                } else {
+                    metas.push({ mes, valor });
+                }
+                salvarLocalStorage();
+                atualizarResumo();
+                $("#valorMeta, #mesMeta").val("");
+                alert("Meta salva com sucesso!");
+            }
+        }
+
+        function exportarDados() {
+            const dados = { transacoes, categorias, metas };
+            const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `financas_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        }
+
+        function limparDados() {
+            if (confirm("Deseja limpar TODOS os dados? Esta ação não pode ser desfeita!")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        function atualizarGraficos() {
+            const entrada = transacoes.filter(t => t.tipo === 'entrada').reduce((acc, t) => acc + t.valor, 0);
+            const saida = transacoes.filter(t => t.tipo === 'saida').reduce((acc, t) => acc + t.valor, 0);
+
+            new Chart(document.getElementById('graficoTipo'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Entradas', 'Saídas'],
+                    datasets: [{
+                        data: [entrada, saida],
+                        backgroundColor: ['#10b981', '#ef4444']
+                    }]
+                }
+            });
+
+            const porCategoria = {};
+            transacoes.filter(t => t.tipo === 'saida').forEach(t => {
+                porCategoria[t.categoria] = (porCategoria[t.categoria] || 0) + t.valor;
+            });
+
+            new Chart(document.getElementById('graficoCategorias'), {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(porCategoria),
+                    datasets: [{
+                        data: Object.values(porCategoria),
+                        backgroundColor: Object.keys(porCategoria).map(cat => 
+                            categorias.find(c => c.nome === cat)?.cor || '#64748b'
+                        )
+                    }]
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            $("#data").val(new Date().toISOString().split('T')[0]);
+            $("#mesMeta").val(new Date().toISOString().slice(0, 7));
+            atualizarCategorias();
+            atualizarResumo();
+            atualizarTabela();
+            atualizarGraficos();
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <footer class="text-center py-3 mt-4 text-muted">&copy; 2025 BArcellos ↟ - Todos os direitos reservados.</footer>
+</body>
+</html>
