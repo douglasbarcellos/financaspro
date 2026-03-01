@@ -174,4 +174,4 @@ BArcellos ↟
 
 ---
 
-© 2025 BArcellos ↟ - Todos os direitos reservados.
+© 2026 BArcellos ↟ - Todos os direitos reservados.
